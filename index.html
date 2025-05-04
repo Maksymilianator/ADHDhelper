@@ -1,219 +1,57 @@
-
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ADHD Helper Whiteboard V6</title>
-  <style>
-    body { margin: 0; overflow: hidden; background: #f0f0f0; }
-    #toolbar {
-      position: fixed; top: 10px; left: 10px; z-index: 100;
-      background: white; padding: 10px; border-radius: 10px;
-      display: flex; flex-wrap: wrap; gap: 8px;
-    }
-    button, select, input[type=range] { padding: 6px; }
-    #fileInput, #imageInput { display: none; }
-  </style>
-  <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+  <meta charset="UTF-8">
+  <title>ADHDhelper Infinite Canvas</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div id="toolbar">
-    <select id="modeSelect">
-      <option value="draw">✏️ Rysuj</option>
-      <option value="erase">🧽 Gumka</option>
-      <option value="highlighter">🖍️ Zakreślacz</option>
-    </select>
-    <select id="colorSelect">
-      <option value="black">Czarny</option>
-      <option value="red">Czerwony</option>
-      <option value="blue">Niebieski</option>
-      <option value="green">Zielony</option>
-      <option value="yellow">Żółty</option>
-    </select>
-    <select id="brushSizeSelect">
-      <option value="3">3px</option>
-      <option value="5">5px</option>
-      <option value="10">10px</option>
-      <option value="20">20px</option>
-      <option value="40">40px</option>
-    </select>
-    <input type="range" id="opacityRange" min="0.1" max="1" step="0.1" value="1">
-    <button id="addText">🔤 Dodaj tekst</button>
-    <button id="addRect">🟧 Kwadrat</button>
-    <button id="addCircle">⚪ Koło</button>
-    <button id="addTriangle">🔺 Trójkąt</button>
-    <button id="undo">↩️ Cofnij</button>
-    <button id="redo">↪️ Przywróć</button>
-    <button id="save">💾 PNG</button>
-    <button id="saveJson">📄 Zapisz projekt</button>
-    <button id="loadJson">📂 Wczytaj projekt</button>
-    <button id="uploadImageButton">🖼️ Wstaw obraz</button>
-    <input type="file" id="fileInput" accept=".json" />
-    <input type="file" id="imageInput" accept="image/*" />
+    <button id="pointerBtn">Pointer</button>
+    <button id="penBtn">Pen</button>
+    <button id="highlighterBtn">Highlighter</button>
+    <button id="eraserBtn">Eraser</button>
+    <button id="circleBtn">Circle</button>
+    <button id="squareBtn">Square</button>
+    <button id="triangleBtn">Triangle</button>
+    <button id="stickyBtn">Sticky</button>
+    <label>Sticky Color:<input type="color" id="stickyColor" value="#ffeb3b"></label>
+    <button id="imageBtn">Image</button>
+    <input type="file" id="imageLoader" accept="image/*">
+    <button id="textBtn">Text</button>
+    <button id="undoBtn">Undo</button>
+    <button id="redoBtn">Redo</button>
+    <label>Pen Size:<input type="range" id="penSize" min="1" max="10" value="2"></label>
+    <label>Highlighter Size:<input type="range" id="highlighterSize" min="5" max="100" value="8"></label>
+    <label>Eraser Size:<input type="range" id="eraserSize" min="5" max="100" value="20"></label>
+    <label>Erase Mode:<select id="eraserMode"><option value="partial">Partial</option><option value="whole">Whole Path</option></select></label>
+    <label>Target:<select id="eraserTarget"><option value="both">Both</option><option value="pen">Pen</option><option value="highlighter">Highlighter</option></select></label>
+    <label>Text Size:<input type="number" id="textSize" min="10" max="100" value="16"></label>
+    <label>Text Color:<input type="color" id="textColor" value="#000000"></label>
+    <label>Background:
+      <select id="bgSelect">
+        <option value="clean">Clean</option>
+        <option value="grid" selected>Grid</option>
+        <option value="dots">Dots</option>
+      </select>
+    </label>
+    <button id="returnBtn">Return to Last Drawing</button>
   </div>
-  <div id="container"></div>
+  <canvas id="canvas"></canvas>
+  <div id="objectLayer"></div>
+  <div id="cursorIndicator"></div>
 
-  <script>
-    let stage = new Konva.Stage({ container: 'container', width: window.innerWidth, height: window.innerHeight, draggable: false });
-    let layer = new Konva.Layer();
-    stage.add(layer);
-
-    let isDrawing = false, mode = 'draw', color = 'black', brushSize = 3, opacity = 1;
-    let currentLine;
-    let undoStack = [], redoStack = [];
-
-    function saveState() { undoStack.push(stage.toJSON()); redoStack = []; }
-
-    function bindEvents() {
-      stage.off('mousedown touchstart mousemove touchmove mouseup touchend contextmenu');
-      stage.on('mousedown touchstart', e => {
-        if (e.evt.button === 1) {
-          stage.draggable(true);
-          stage.startDrag();
-          return;
-        }
-
-        if (mode === 'draw' || mode === 'erase' || mode === 'highlighter') {
-          isDrawing = true;
-          const pos = stage.getRelativePointerPosition(layer);
-          currentLine = new Konva.Line({
-            stroke: mode === 'erase' ? 'white' : color,
-            strokeWidth: brushSize,
-            opacity: mode === 'highlighter' ? opacity : 1,
-            globalCompositeOperation: mode === 'erase' ? 'destination-out' : 'source-over',
-            points: [pos.x, pos.y],
-            lineCap: 'round',
-            lineJoin: 'round',
-          });
-          layer.add(currentLine);
-          saveState();
-        }
-      });
-      stage.on('mousemove touchmove', e => {
-        if (!isDrawing) return;
-        const pos = stage.getRelativePointerPosition(layer);
-        const newPoints = currentLine.points().concat([pos.x, pos.y]);
-        currentLine.points(newPoints);
-        layer.batchDraw();
-      });
-      stage.on('mouseup touchend mouseup', e => {
-        isDrawing = false;
-        stage.draggable(false);
-      });
-      stage.on('contextmenu', e => e.evt.preventDefault());
-    }
-    bindEvents();
-
-    document.getElementById('modeSelect').onchange = e => mode = e.target.value;
-    document.getElementById('colorSelect').onchange = e => color = e.target.value;
-    document.getElementById('brushSizeSelect').onchange = e => brushSize = parseInt(e.target.value);
-    document.getElementById('opacityRange').oninput = e => opacity = parseFloat(e.target.value);
-
-    function refreshStageFromJSON(json) {
-      stage.destroyChildren();
-      stage = Konva.Node.create(json, 'container');
-      layer = stage.findOne('Layer');
-      bindEvents();
-    }
-
-    function addShape(shape) {
-      const pos = stage.getRelativePointerPosition(layer);
-      layer.add(shape);
-      layer.add(new Konva.Transformer({ nodes: [shape] }));
-      shape.position(pos);
-      layer.batchDraw();
-      saveState();
-    }
-
-    document.getElementById('addText').onclick = () => {
-      const userText = prompt('Wpisz tekst:');
-      if (userText) {
-        const textNode = new Konva.Text({
-          text: userText,
-          fontSize: 30,
-          fill: color,
-          draggable: true,
-        });
-        addShape(textNode);
-      }
-    };
-
-    document.getElementById('addRect').onclick = () => {
-      const rect = new Konva.Rect({ width: 100, height: 100, fill: color, draggable: true });
-      addShape(rect);
-    };
-    document.getElementById('addCircle').onclick = () => {
-      const circle = new Konva.Circle({ radius: 50, fill: color, draggable: true });
-      addShape(circle);
-    };
-    document.getElementById('addTriangle').onclick = () => {
-      const triangle = new Konva.RegularPolygon({ sides: 3, radius: 60, fill: color, draggable: true });
-      addShape(triangle);
-    };
-
-    document.getElementById('undo').onclick = () => {
-      if (undoStack.length) {
-        redoStack.push(stage.toJSON());
-        const json = undoStack.pop();
-        refreshStageFromJSON(json);
-      }
-    };
-    document.getElementById('redo').onclick = () => {
-      if (redoStack.length) {
-        undoStack.push(stage.toJSON());
-        const json = redoStack.pop();
-        refreshStageFromJSON(json);
-      }
-    };
-
-    document.getElementById('save').onclick = () => {
-      const dataURL = stage.toDataURL({ pixelRatio: 3 });
-      const a = document.createElement('a');
-      a.href = dataURL; a.download = 'rysunek.png'; a.click();
-    };
-    document.getElementById('saveJson').onclick = () => {
-      const json = stage.toJSON();
-      const blob = new Blob([json], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'projekt.json'; a.click();
-    };
-    document.getElementById('loadJson').onclick = () => document.getElementById('fileInput').click();
-    document.getElementById('fileInput').addEventListener('change', e => {
-      const file = e.target.files[0]; if (!file) return;
-      const reader = new FileReader();
-      reader.onload = evt => { refreshStageFromJSON(evt.target.result); };
-      reader.readAsText(file);
-    });
-
-    document.getElementById('uploadImageButton').onclick = () => document.getElementById('imageInput').click();
-    document.getElementById('imageInput').addEventListener('change', e => {
-      const file = e.target.files[0]; if (!file) return;
-      const reader = new FileReader();
-      reader.onload = evt => {
-        const img = new Image();
-        img.src = evt.target.result;
-        img.onload = () => {
-          const konvaImage = new Konva.Image({ image: img, draggable: true, width: img.width / 2, height: img.height / 2 });
-          addShape(konvaImage);
-        };
-      };
-      reader.readAsDataURL(file);
-    });
-
-    stage.on('wheel', e => {
-      e.evt.preventDefault();
-      const oldScale = stage.scaleX();
-      const pointer = stage.getPointerPosition();
-      const scaleBy = 1.05;
-      const newScale = e.evt.deltaY > 0 ? oldScale / scaleBy : oldScale * scaleBy;
-      stage.scale({ x: newScale, y: newScale });
-      const mousePointTo = { x: (pointer.x - stage.x()) / oldScale, y: (pointer.y - stage.y()) / oldScale };
-      const newPos = { x: pointer.x - mousePointTo.x * newScale, y: pointer.y - mousePointTo.y * newScale };
-      stage.position(newPos);
-      stage.batchDraw();
-    });
-  </script>
+  <!-- kolejność ważna: najpierw main.js (deklaracja zmiennych globalnych), później moduły -->
+  <script src="main.js" defer></script>
+  <script src="utils.js" defer></script>
+  <script src="persistence.js" defer></script>
+  <script src="drawing.js" defer></script>
+  <script src="eraser.js" defer></script>
+  <script src="shapes.js" defer></script>
+  <script src="sticky.js" defer></script>
+  <script src="image.js" defer></script>
+  <script src="text.js" defer></script>
+  <script src="objects.js" defer></script>
+  <script src="interactions.js" defer></script>
 </body>
 </html>
