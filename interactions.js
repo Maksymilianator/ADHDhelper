@@ -193,3 +193,94 @@ document.addEventListener('DOMContentLoaded', function() {
   loadState();
   window.addEventListener('beforeunload', saveState);
 });
+
+// ====== obsługa dotyku ======
+let pinchStartDist = 0;
+let pinchStartScale, pinchStartTranslate;
+
+// utility: dystans między dwoma palcami
+function getDist(t1, t2) {
+  const dx = t2.clientX - t1.clientX;
+  const dy = t2.clientY - t1.clientY;
+  return Math.hypot(dx, dy);
+}
+
+// touchstart
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (e.touches.length === 1) {
+    // jedna kropka = myszka
+    const t = e.touches[0];
+    canvas.dispatchEvent(new MouseEvent('mousedown', {
+      clientX: t.clientX, clientY: t.clientY, button: 0
+    }));
+  }
+  else if (e.touches.length === 2) {
+    // początek pinch
+    pinchStartDist     = getDist(e.touches[0], e.touches[1]);
+    pinchStartScale    = scale;
+    pinchStartTranslate= { x: translateX, y: translateY };
+  }
+}, { passive: false });
+
+// touchmove
+canvas.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (e.touches.length === 1) {
+    const t = e.touches[0];
+    canvas.dispatchEvent(new MouseEvent('mousemove', {
+      clientX: t.clientX, clientY: t.clientY
+    }));
+  }
+  else if (e.touches.length === 2) {
+    // pinch-to-zoom
+    const dist = getDist(e.touches[0], e.touches[1]);
+    const factor = dist / pinchStartDist;
+    const newScale = clampScale(pinchStartScale * factor);
+    // przybliżenie wokół środka palców
+    const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+    const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+    const world = screenToWorld(midX, midY);
+    translateX = midX - world.x * newScale;
+    translateY = midY - world.y * newScale;
+    scale = newScale;
+    draw();
+  }
+}, { passive: false });
+
+// touchend
+canvas.addEventListener('touchend', e => {
+  e.preventDefault();
+  if (e.touches.length === 0) {
+    // zakończenie single-touch sesji
+    canvas.dispatchEvent(new MouseEvent('mouseup', {}));
+    saveState();
+  }
+}, { passive: false });
+
+// i na objectLayer też:
+objectLayer.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (e.touches.length === 1) {
+    const t = e.touches[0];
+    objectLayer.dispatchEvent(new MouseEvent('mousedown', {
+      clientX: t.clientX, clientY: t.clientY, button: 0
+    }));
+  }
+}, { passive: false });
+objectLayer.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (e.touches.length === 1) {
+    const t = e.touches[0];
+    objectLayer.dispatchEvent(new MouseEvent('mousemove', {
+      clientX: t.clientX, clientY: t.clientY
+    }));
+  }
+}, { passive: false });
+objectLayer.addEventListener('touchend', e => {
+  e.preventDefault();
+  if (e.touches.length === 0) {
+    objectLayer.dispatchEvent(new MouseEvent('mouseup', {}));
+  }
+}, { passive: false });
+
