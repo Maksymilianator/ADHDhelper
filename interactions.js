@@ -2,9 +2,9 @@
 
 // ——— grupowa selekcja prostokątna ———
 let isSelecting     = false;
-let selectStart     = { x:0, y:0 };
+let selectStart     = { x: 0, y: 0 };
 let selectionRectEl = null;
-let selectedPaths = [];
+let selectedPaths   = [];   // dla ścieżek pen/highlighter
 
 
 // Pobiera zaznaczone typy z checkboxów
@@ -96,13 +96,7 @@ objectLayer.onmousedown = e => {
       deselectElement();
       return;
     }
-    // start selekcji prostokątnej
-    isSelecting = true;
-    selectStart = { x: e.clientX, y: e.clientY };
-    selectionRectEl = document.createElement('div');
-    selectionRectEl.id = 'selection-rect';
-    document.body.appendChild(selectionRectEl);
-    return;
+
   }
 
   // 3) W narzędziach shape: circle/square/triangle – uruchamiamy rysowanie
@@ -565,3 +559,8 @@ function deleteSelectedObjects() {
     });
   });
   
+  function getSelectionFilter() {
+  return Array.from(document.querySelectorAll('.select-filter'))
+    .filter(cb => cb.checked)
+    .map(cb => cb.value);
+  }

@@ -29,21 +29,31 @@ function drawBackground() {
 
 // Rysowanie ścieżek (pen/highlighter)
 function drawPaths() {
-  paths.forEach(obj => {
+  paths.forEach((obj, idx) => {
     ctx.beginPath();
-    ctx.lineCap   = 'round';
-    ctx.lineJoin  = 'round';
-    
-    ctx.lineWidth = obj.size / scale;
-    ctx.strokeStyle = obj.type === 'highlighter'
-      ? 'rgba(255,255,0,0.5)'
-      : 'black';
-    obj.points.forEach((p, i) =>
-      i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)
-    );
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    // jeśli ta ścieżka jest zaznaczona → podświetlamy ją na czerwono
+    if (selectedPaths.includes(idx)) {
+      ctx.strokeStyle = 'red';
+      ctx.lineWidth   = obj.size / scale + 2;
+    } else {
+      ctx.strokeStyle = obj.type === 'highlighter'
+        ? 'rgba(255,255,0,0.5)'
+        : 'black';
+      ctx.lineWidth   = obj.size / scale;
+    }
+
+    obj.points.forEach((p, i) => {
+      if (i === 0) ctx.moveTo(p.x, p.y);
+      else         ctx.lineTo(p.x, p.y);
+    });
     ctx.stroke();
   });
 }
+
+
 
 // Główna pętla rysowania
 function draw() {
