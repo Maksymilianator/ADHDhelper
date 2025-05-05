@@ -33,6 +33,7 @@ function drawPaths() {
     ctx.beginPath();
     ctx.lineCap   = 'round';
     ctx.lineJoin  = 'round';
+    
     ctx.lineWidth = obj.size / scale;
     ctx.strokeStyle = obj.type === 'highlighter'
       ? 'rgba(255,255,0,0.5)'

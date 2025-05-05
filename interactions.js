@@ -1,8 +1,11 @@
 // ======================= interactions.js =======================
 
+// ——— grupowa selekcja prostokątna ———
 let isSelecting     = false;
 let selectStart     = { x:0, y:0 };
 let selectionRectEl = null;
+let selectedPaths = [];
+
 
 // Pobiera zaznaczone typy z checkboxów
 function getSelectionFilter() {
@@ -84,64 +87,40 @@ returnBtnEl.onclick     = ()=>{
 
 // 2. Eventy warstwy obiektów
 objectLayer.onmousedown = e => {
-  // Środkowy przycisk ignorujemy (Pan działa globalnie)
+  // 1) Środek myszy ignorujemy (Pan globalny)
   if (e.button === 1) return;
 
-  // Odkliknięcie tła w pointerze
-  if (e.target===objectLayer && currentTool==='pointer') {
-    deselectElement();
+  // 2) Jeśli pointer — to albo deselect tła, albo prostokąt zaznaczania
+  if (currentTool === 'pointer') {
+    if (e.target === objectLayer) {
+      deselectElement();
+      return;
+    }
+    // start selekcji prostokątnej
+    isSelecting = true;
+    selectStart = { x: e.clientX, y: e.clientY };
+    selectionRectEl = document.createElement('div');
+    selectionRectEl.id = 'selection-rect';
+    document.body.appendChild(selectionRectEl);
     return;
-  
   }
-  // 1) Rozpocznij selekcję
-  isSelecting = true;
-  selectStart = { x: e.clientX, y: e.clientY };
-  // utwórz div selekcji
-  selectionRectEl = document.createElement('div');
-  selectionRectEl.id = 'selection-rect';
-  document.body.appendChild(selectionRectEl);
-  // Rozpoczęcie rysowania kształtu
+
+  // 3) W narzędziach shape: circle/square/triangle – uruchamiamy rysowanie
   if (['circle','square','triangle'].includes(currentTool)) {
     isDrawing = true;
-    // zapamiętaj punkt startu w screen px
     drawStartScreen = { x: e.clientX, y: e.clientY };
-    // przelicz na world px i ustaw w objectStart
     const w = screenToWorld(e.clientX, e.clientY);
     startShape(currentTool, w.x, w.y);
-
-    // stwórz preview element
-    previewEl = document.createElement('div');
-    previewEl.style.position      = 'absolute';
-    previewEl.style.left          = `${drawStartScreen.x}px`;
-    previewEl.style.top           = `${drawStartScreen.y}px`;
-    previewEl.style.width         = '0px';
-    previewEl.style.height        = '0px';
-    previewEl.style.pointerEvents = 'none';
-    previewEl.style.background    = 'transparent';
-    // ramka i kształt
-    if (currentTool === 'circle') {
-      previewEl.style.border       = '2px dashed gray';
-      previewEl.style.borderRadius = '50%';
-    }
-    else if (currentTool === 'square') {
-      previewEl.style.border = '2px dashed gray';
-    }
-    else if (currentTool === 'triangle') {
-      previewEl.style.border = 'none';
-      // używamy clip-path, by pokazać trójkąt
-      previewEl.style.clipPath = 'polygon(50% 0%, 100% 100%, 0% 100%)';
-      previewEl.style.border   = '2px dashed gray';
-    }
-    objectLayer.appendChild(previewEl);
-
+    // … tutaj Twój kod tworzenia previewEl …
     return;
   }
 
-  // Inne narzędzia…
-  if (currentTool==='sticky')    addSticky(e.clientX, e.clientY);
-  if (currentTool==='placeImage' && pendingImage) placeImage(e.clientX,e.clientY);
-  if (currentTool==='text')      addText(e.clientX, e.clientY);
+  // 4) Inne narzędzia (sticky, image, text) zachowują się jak wcześniej
+  if (currentTool === 'sticky')    { addSticky(e.clientX, e.clientY); return; }
+  if (currentTool === 'placeImage' && pendingImage) { placeImage(e.clientX, e.clientY); return; }
+  if (currentTool === 'text')      { addText(e.clientX, e.clientY); return; }
 };
+
 
 objectLayer.onmousemove = e => {
   // 1) przesuwanie wybranych obiektów (istniejący kod) …
@@ -442,32 +421,147 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ——— klawisz Delete usuwa zaznaczony obiekt ———
 document.addEventListener('keydown', e => {
-  // upewnij się, że nie jesteśmy w polu tekstowym
   const tag = document.activeElement.tagName.toLowerCase();
-  if (tag === 'input' || tag === 'textarea' || document.activeElement.isContentEditable) return;
-
+  if (tag==='input' || tag==='textarea' || document.activeElement.isContentEditable) return;
   if (e.key === 'Delete' || e.key === 'Del') {
-    deleteSelectedObject();
+    // jeżeli są obiekty zaznaczone w grupie → usuwamy je wszystkie
+    const anySelected = document.querySelector('.object.selected');
+    if (anySelected) {
+      deleteSelectedObjects();
+    } else {
+      deleteSelectedObject();
+    }
   }
 });
 
 
-  // ——— usuń zaznaczony obiekt ———
-  function deleteSelectedObject() {
-  if (!selectedElement) return; 
-    // zrób snapshot stanu przed usunięciem
-    pushState();
-  // nic nie rób, jeśli nic nie jest zaznaczone
-  const idx = parseInt(selectedElement.dataset.index);
-  // usuń z opisów
-  objectsDescriptors.splice(idx, 1);
-  // przebuduj warstwę obiektów
+
+// ——— usuń wszystkie zaznaczone obiekty ———
+function deleteSelectedObjects() {
+  const selectedEls = Array.from(document.querySelectorAll('.object.selected'));
+  if (!selectedEls.length) return;
+
+  // snapshot przed usunięciem
+  pushState();
+
+  // zbierz wszystkie indeksy opisów do usunięcia
+  const toRemove = new Set(selectedEls.map(el => parseInt(el.dataset.index, 10)));
+  // filtruj opis
+  objectsDescriptors = objectsDescriptors.filter((desc, idx) => !toRemove.has(idx));
+
+  // odśwież warstwę i czyść zaznaczenia
   recreateObjects();
-  // ponownie podświetl (nie będzie nic zaznaczone)
+  selectedEls.forEach(el => el.classList.remove('selected'));
   selectedElement = null;
-  // odrysuj kanwę + zapisz stan
+
+  // narysuj i zapisz stan
   draw();
   saveState();
-  }
+}
 
 
+  document.addEventListener('mousedown', e => {
+    // tylko w trybie pointer i lewy przycisk
+    if (currentTool !== 'pointer' || e.button !== 0) return;
+  
+    // klik na obszarze canvas lub objectLayer zaczyna selekcję
+    if (e.target === canvas || e.target === objectLayer) {
+      isSelecting = true;
+      selectStart = { x: e.clientX, y: e.clientY };
+  
+      // utwórz wizualny prostokąt selekcji
+      selectionRectEl = document.createElement('div');
+      selectionRectEl.id = 'selection-rect';
+      Object.assign(selectionRectEl.style, {
+        position: 'absolute',
+        border:   '1px dashed #007BFF',
+        background:'rgba(0,123,255,0.1)',
+        left:     `${selectStart.x}px`,
+        top:      `${selectStart.y}px`,
+        width:    '0px',
+        height:   '0px',
+        pointerEvents: 'none',
+        zIndex:   9999
+      });
+      document.body.appendChild(selectionRectEl);
+    }
+  });
+  
+  document.addEventListener('mousemove', e => {
+    if (!isSelecting || !selectionRectEl) return;
+  
+    const x = Math.min(e.clientX, selectStart.x);
+    const y = Math.min(e.clientY, selectStart.y);
+    const w = Math.abs(e.clientX - selectStart.x);
+    const h = Math.abs(e.clientY - selectStart.y);
+  
+    Object.assign(selectionRectEl.style, {
+      left:   `${x}px`,
+      top:    `${y}px`,
+      width:  `${w}px`,
+      height: `${h}px`
+    });
+  });
+  
+  document.addEventListener('mouseup', e => {
+    if (!isSelecting) return;
+    isSelecting = false;
+  
+    // pobierz prostokąt selekcji i usuń go z DOM
+    const selRect = selectionRectEl.getBoundingClientRect();
+    selectionRectEl.remove();
+    selectionRectEl = null;
+  
+    // pobierz filtr typów (checkboxy .select-filter)
+    const filter = getSelectionFilter();
+  
+    // wyczyść dotychczasowe zaznaczenia
+    document.querySelectorAll('.object.selected').forEach(el => {
+      el.classList.remove('selected');
+    });
+    // ——— zaznaczanie ścieżek Pen/Highlighter ———
+    selectedPaths = [];
+    // jeśli w filtrze mamy pen/highlighter
+    if (filter.includes('pen') || filter.includes('highlighter')) {
+      paths.forEach((path, idx) => {
+        // pomiń, jeśli typ ścieżki nie jest w filtrze
+        if (!filter.includes(path.type)) return;
+        // bounding box ścieżki w px ekranu
+        let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+        path.points.forEach(p => {
+          const sx = p.x*scale + translateX;
+          const sy = p.y*scale + translateY;
+          minX = Math.min(minX, sx);
+          minY = Math.min(minY, sy);
+          maxX = Math.max(maxX, sx);
+          maxY = Math.max(maxY, sy);
+        });
+        // prostokąty nachodzą na siebie?
+        const overlaps = !(maxX < selRect.left
+                       || minX > selRect.right
+                       || maxY < selRect.top
+                       || minY > selRect.bottom);
+        if (overlaps) selectedPaths.push(idx);
+      });
+    }
+    // ——— koniec selekcji ścieżek ———
+  
+    // aktualizacja widoku
+    draw(); recreateObjects(); updateActiveTool();
+  
+    // zaznacz nowe: obiekty przecinające prostokąt i zgodne z filtrem
+    document.querySelectorAll('.object').forEach(el => {
+      const type = el.dataset.type;
+      if (!filter.includes(type)) return;
+  
+      const r = el.getBoundingClientRect();
+      const intersects = !(
+        r.right  < selRect.left  ||
+        r.left   > selRect.right ||
+        r.bottom < selRect.top   ||
+        r.top    > selRect.bottom
+      );
+      if (intersects) el.classList.add('selected');
+    });
+  });
+  
