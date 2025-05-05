@@ -2,7 +2,6 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ADHDhelper Infinite Canvas</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -37,6 +36,16 @@
       </select>
     </label>
     <button id="returnBtn">Return to Last Drawing</button>
+    <!-- Filtr selekcji: wybierz, które typy chcesz zaznaczać przy przeciąganiu -->
+<div id="selectionFilter" style="display:flex; gap:8px; align-items:center;">
+  <label><input type="checkbox" class="select-filter" value="circle" checked> Koło</label>
+  <label><input type="checkbox" class="select-filter" value="square" checked> Kwadrat</label>
+  <label><input type="checkbox" class="select-filter" value="triangle" checked> Trójkąt</label>
+  <label><input type="checkbox" class="select-filter" value="sticky" checked> Sticky</label>
+  <label><input type="checkbox" class="select-filter" value="image" checked> Image</label>
+  <label><input type="checkbox" class="select-filter" value="text" checked> Text</label>
+  <!-- Dodaj tu inne typy jeśli będziesz miał -->
+</div>
   </div>
   <canvas id="canvas"></canvas>
   <div id="objectLayer"></div>

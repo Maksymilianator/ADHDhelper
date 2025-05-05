@@ -46,6 +46,8 @@ body, html {
     touch-action: none;
   }
   .object {
+    user-select: none;        /* wyłącza zaznaczanie treści */
+    -webkit-user-drag: none;  /* wyłącza drag’n’drop w WebKit */
     position: absolute;
     transform-origin: center;
   }
@@ -74,5 +76,16 @@ body, html {
   }
   #imageLoader {
     display: none;
+  }
+
+  .object.selected {
+    box-shadow: 0 0 0 2px #007BFF;
+  }
+  #selection-rect {
+    position: absolute;
+    border: 1px dashed #007BFF;
+    background: rgba(0, 123, 255, 0.1);
+    pointer-events: none;
+    z-index: 9;
   }
   

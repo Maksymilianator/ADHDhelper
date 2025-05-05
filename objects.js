@@ -32,6 +32,7 @@ function recreateObjects() {
       el = document.createElement('div');
       const img = document.createElement('img');
       img.src = desc.src;
+      img.draggable = false;   // ← wyłączamy drag
       img.style.width='100%'; img.style.height='100%';
       el.appendChild(img);
     } else if (desc.type === 'text') {
@@ -43,6 +44,11 @@ function recreateObjects() {
     }
     if (!el) return;
     el.classList.add('object');
+    // oznacz typ i wyłącz od razu edycję tekstu/sticky
+    el.dataset.type = desc.type;
+    if (desc.type === 'sticky' || desc.type === 'text') {
+    el.contentEditable = false;
+    }
     el.style.left  = screenX + 'px';
     el.style.top   = screenY + 'px';
     el.style.width = screenW + 'px';
@@ -57,22 +63,46 @@ function recreateObjects() {
   function createDescriptor(desc) {
     objectsDescriptors.push(desc);
     createObjectFromDescriptor(desc);
+  
+    // Zapisz środek nowego obiektu jako ostatni punkt widoku
+    lastView.pos   = {
+      x: desc.x + desc.w/2,
+      y: desc.y + desc.h/2
+    };
+    lastView.scale = scale;
+  
     saveState();
   }
   
   // Eventy dla obiektów
   function addObjectEventHandlers(el) {
+    // pojedynczy klik — tylko wybór / przesunięcie
     el.onmousedown = e => {
+      if (e.button !== 0) return;      // tylko lewy
       e.stopPropagation();
-      if (currentTool==='pointer') {
-        pushState();
-        selectElement(el);
-        isMoving = true;
-        const r = el.getBoundingClientRect();
-        moveOffset = { x: e.clientX - r.left, y: e.clientY - r.top };
+      if (currentTool !== 'pointer') return;
+  
+      selectElement(el);
+      isMoving = true;
+      const r = el.getBoundingClientRect();
+      moveOffset = { x: e.clientX - r.left, y: e.clientY - r.top };
+  
+      // przy pojedynczym kliknięciu nigdy nie wchodzimy w tryb edycji
+      if (el.dataset.type === 'sticky' || el.dataset.type === 'text') {
+        el.contentEditable = false;
       }
     };
+  
+    // podwójny klik — wchodzimy w tryb edycji tekstu/sticky
+    el.addEventListener('dblclick', e => {
+      if (el.dataset.type === 'sticky' || el.dataset.type === 'text') {
+        e.stopPropagation();
+        el.contentEditable = true;
+        el.focus();
+      }
+    });
   }
+  
   
   // Wybór i uchwyty
   let handles = [];
