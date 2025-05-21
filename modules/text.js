@@ -82,6 +82,18 @@ export function initText({
     if (!active && currentInput) finishEditing();
   });
 
+  // deactivate Text tool when switching to other tools
+toolbar.addEventListener('click', e => {
+  if (!e.target.matches('button.tool')) return;
+  // jeśli klikliśmy inny przycisk niż Text
+  if (e.target !== btn && active) {
+    active = false;
+    btn.classList.remove('active');
+    menu.style.display = 'none';
+    if (currentInput) finishEditing();
+  }
+});
+
   // menu listeners
   menu.querySelector('#textType').addEventListener('change', e => inputType = e.target.value);
   menu.querySelector('#textColor').addEventListener('input', e => color = e.target.value);

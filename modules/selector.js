@@ -59,6 +59,7 @@ export function initSelector({
     }
   });
   
+
   // Helper to convert mouse event to grid coordinates
   function toGrid(e) {
     return {
