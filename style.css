@@ -1,0 +1,243 @@
+html, body {
+  margin: 0; padding: 0; height: 100%; overflow: hidden;
+}
+
+/* toolbar i zoomIndicator jak wcześniej */
+#toolbar {
+  position: absolute; top: 10px; left: 10px;
+  display: flex; flex-direction: column;
+  background: rgba(255,255,255,0.8); border-radius: 8px; padding: 8px;
+  z-index: 10;
+}
+#zoomIndicator {
+  position: absolute; top: 10px; right: 10px;
+  background: rgba(255,255,255,0.8); padding: 4px 8px;
+  border-radius: 4px; z-index: 11; font-size:14px; color:#333;
+  font-family:sans-serif;
+}
+
+/* kontener canvases */
+#canvasContainer {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+}
+/* oba canvasy nakładają się na siebie */
+#gridCanvas,
+#shapeCanvas {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%; 
+}
+/* shapeCanvas nad gridCanvas */
+#shapeCanvas { z-index: 1; }
+
+/* Pen-tool CSS (możesz go przenieść niżej w pliku) */
+.tool {
+  background: none; border:1px solid #bbb; border-radius:4px;
+  padding:6px 10px; margin-bottom:6px; font-size:14px;
+  cursor:pointer; transition: background 0.2s;
+}
+.tool:hover { background: rgba(0,0,0,0.05); }
+
+.pen-menu {
+  display: none; flex-direction: column;
+  background: rgba(255,255,255,0.9); border:1px solid #ccc;
+  border-radius:4px; padding:8px; margin-bottom:8px;
+}
+.pen-menu label {
+  font-size:13px; margin-bottom:6px; display:flex; align-items:center;
+}
+.pen-menu input { margin-left: auto; }
+/* menu Erasera */
+.eraser-menu {
+  display: none;
+  flex-direction: column;
+  background: rgba(255,255,255,0.9);
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+.eraser-menu label {
+  font-size: 13px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+}
+.eraser-menu input {
+  margin-left: auto;
+}
+/* Highlighter-menu */
+.highlighter-menu {
+  display: none;
+  flex-direction: column;
+  background: rgba(255,255,255,0.9);
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+.highlighter-menu label {
+  font-size: 13px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+}
+.highlighter-menu input {
+  margin-left: auto;
+}
+
+.selector-menu {
+  display: none;
+  flex-direction: column;
+  background: rgba(255,255,255,0.9);
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+.selector-menu label {
+  font-size: 13px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+}
+.selector-menu input {
+  margin-right: 6px;
+}
+button.tool.active {
+  background: #e0e0e0;
+}
+
+/* Text-menu styles: fixed column width to preserve readability */
+.text-menu {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem 1rem;
+  max-width: 100%;
+}
+@media (min-width: 400px) {
+  .text-menu {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 700px) {
+  .text-menu {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.text-menu label {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.text-menu select,
+.text-menu input[type="color"],
+.text-menu input[type="number"] {
+  width: 100%;
+  margin-top: 0.25rem;
+  box-sizing: border-box;
+}
+
+#textLayer {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+#textLayer.editing {
+  pointer-events: all;
+}
+
+#textLayer div[contenteditable] {
+  pointer-events: auto;
+  background: transparent;
+  white-space: pre-wrap;        /* zachowaj złamania \n */
+  overflow-wrap: break-word;    /* łam słowa długie */
+  word-break: break-word;       /* jeszcze jeden hack na wrap */
+  outline: none;
+}
+
+/* Text menu layout */
+.text-menu {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem 1rem;
+  max-width: 100%;
+}
+@media (min-width: 400px) {
+  .text-menu {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 700px) {
+  .text-menu {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+.text-menu label {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.text-menu select,
+.text-menu input[type="color"],
+.text-menu input[type="number"] {
+  width: 100%;
+  margin-top: 0.25rem;
+  box-sizing: border-box;
+}
+
+#textAttrMenu {
+  background: rgba(255,255,255,0.95);
+  border: 1px solid #aaa;
+  border-radius: 4px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 13px;
+  z-index: 12;
+}
+#textAttrMenu label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+#textAttrMenu input[type="color"],
+#textAttrMenu input[type="number"],
+#textAttrMenu input[type="range"] {
+  margin-left: 6px;
+}
+/* Text-menu: pionowy układ */
+.text-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 300px;  /* lub 100%, jeśli wolisz, żeby menu rozciągało się na całą szerokość panelu */
+  padding: 8px;
+  background: rgba(255,255,255,0.9);
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.text-menu label {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.text-menu select,
+.text-menu input[type="color"],
+.text-menu input[type="number"],
+.text-menu input[type="range"] {
+  width: 100%;
+  margin-top: 0.25rem;
+  box-sizing: border-box;
+}
+
